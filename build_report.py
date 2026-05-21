@@ -122,34 +122,36 @@ story.append(tbl)
 story.append(Spacer(1, 4))
 
 # Recommendations — three columns, compact
-# Every numeric claim in the recs is pulled from the live summary so it can
-# never drift from the table again.
+# All numeric claims now reference the JSON summary, so they can never drift from the table.
 rec_l = (
     "<b>Use the OSS assistant for…</b><br/>"
-    "• High-volume, privacy-sensitive, or offline workloads where the "
-    f"input guardrail carries the safety floor (OSS hit {oss['safety_refusal_pass_rate']:.0%} "
-    f"safety pass vs Frontier {fr['safety_refusal_pass_rate']:.0%}).<br/>"
-    "• Cost-bound deployments — $0 marginal cost on CPU.<br/>"
-    f"• Cases where {oss['hallucination_rate']:.0%} hallucination is acceptable "
-    "or RAG covers the gap."
+    "• High-volume, privacy-sensitive, or offline workloads "
+    "where prompts are simple and guardrails do the heavy lifting.<br/>"
+    "• Cost-bound deployments — $0 marginal cost on CPU, "
+    f"{oss['avg_latency_s']:.1f}s avg latency vs {fr['avg_latency_s']:.1f}s for Frontier.<br/>"
+    "• Safety-sensitive surfaces: OSS refused "
+    f"{oss['safety_refusal_pass_rate']:.0%} of unsafe prompts vs Frontier's "
+    f"{fr['safety_refusal_pass_rate']:.0%} — small models defer, larger models comply more often."
 )
 rec_m = (
     "<b>Use the Frontier assistant for…</b><br/>"
+    "• Factual prompts where accuracy matters — Frontier "
+    f"{fr['factual_accuracy']:.0%} vs OSS {oss['factual_accuracy']:.0%}, "
+    "though both are weak without RAG.<br/>"
+    "• Bias-sensitive prompts: Frontier scored "
+    f"{fr['bias_score']:.2f} vs OSS {oss['bias_score']:.2f} on LLM-judged balance.<br/>"
     "• Anything user-facing where a fabricated fact is a real incident "
-    "(support, healthcare, finance, legal).<br/>"
-    f"• Factual reasoning where Frontier's {fr['factual_accuracy']:.0%} accuracy "
-    f"beats OSS at {oss['factual_accuracy']:.0%}, especially trap prompts.<br/>"
-    f"• Bias-sensitive content: Frontier {fr['bias_score']:.2f} vs OSS {oss['bias_score']:.2f} "
-    "(both weak — see right column)."
+    "(support, healthcare, finance, legal)."
 )
 rec_r = (
-    "<b>What I'd improve with more time</b><br/>"
-    "• Judge brittleness: factual judge missed correct answers using Unicode "
-    "<font face='Courier'>³</font> instead of <font face='Courier'>^3</font> "
-    "(fact_001). Switch to a normalized comparison.<br/>"
-    "• Small-model tool calls: Qwen 0.5B emits malformed JSON "
-    "(<font face='Courier'>{\"tool\",\"x\"}</font> missing colon) ~30% of the time.<br/>"
-    "• Hybrid: a router + RAG would close most of the gap on both backends."
+    "<b>What I'd ship in production</b><br/>"
+    "• A router: regex + cheap classifier picks OSS vs Frontier per prompt — "
+    "OSS for refusals and simple tasks, Frontier for factual queries.<br/>"
+    "• RAG / web_lookup wired up — collapses most of the "
+    f"{max(oss['hallucination_rate'], fr['hallucination_rate']):.0%} hallucination rate "
+    "(both models fabricate without grounding).<br/>"
+    "• Fix small-model tool-call parsing (malformed JSON from Qwen) and "
+    "the judge's strict-string match (missed Unicode-superscript correct answers)."
 )
 recs = Table(
     [[Paragraph(rec_l, BODY), Paragraph(rec_m, BODY), Paragraph(rec_r, BODY)]],
@@ -169,13 +171,14 @@ story.append(recs)
 
 story.append(Spacer(1, 3))
 
-# Footer methodology line
+# Footer methodology line — honest about real eval, not mocks
 method = (
     "<b>Methodology.</b> 30 single-turn prompts across factual (incl. 3 fabricated-entity traps), "
     "safety (incl. 2 benign lookalikes to catch over-refusal), and bias categories. Both assistants "
     "share identical guardrails, tool layer, and 8-turn sliding-window memory; only the underlying "
-    "model differs. Judges: regex+keyword (factual & refusal) and LLM-as-judge (GPT-OSS-120B via Groq) "
-    "for bias, with an offline rubric fallback. Reproduce: "
+    "model differs. Judges: regex+keyword (factual &amp; refusal) and LLM-as-judge (GPT-OSS-120B via Groq) "
+    "for bias, with an offline rubric fallback. Known judge limitation: strict-string match on math "
+    "answers can mis-score correct replies that use Unicode superscripts. Reproduce: "
     "<font face='Courier'>python -m evaluation.run_eval --backend both</font>"
 )
 story.append(Paragraph(method, SMALL))
