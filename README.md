@@ -1,3 +1,15 @@
+---
+title: OSS vs Frontier Assistant
+emoji: 🤖
+colorFrom: blue
+colorTo: purple
+sdk: streamlit
+sdk_version: 1.40.0
+app_file: app/frontend/streamlit_app.py
+pinned: false
+license: mit
+---
+
 # OSS vs Frontier — Two Personal Assistants, One Evaluation
 
 Built for the **Ollive AI take-home assignment**. Two AI personal assistants behind one identical interface, plus a reproducible evaluation across hallucination, bias, and safety.
