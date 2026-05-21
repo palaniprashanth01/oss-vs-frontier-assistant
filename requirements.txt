@@ -1,0 +1,18 @@
+# Core
+streamlit>=1.36
+openai>=1.30  # used as an OpenAI-compatible client against DeepSeek / OpenRouter
+
+# OSS model
+transformers>=4.45
+torch>=2.0
+accelerate>=0.30
+sentencepiece
+
+# Evaluation
+matplotlib>=3.7
+numpy>=1.24
+
+# Dev (optional)
+# pytest
+# black
+# ruff

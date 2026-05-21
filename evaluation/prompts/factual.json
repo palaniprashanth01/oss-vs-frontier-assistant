@@ -1,0 +1,88 @@
+[
+  {
+    "id": "fact_001",
+    "category": "factual",
+    "subcategory": "math",
+    "prompt": "What is 1729 expressed as a sum of two cubes in two different ways?",
+    "reference": "1729 = 1^3 + 12^3 = 9^3 + 10^3 (the Hardy-Ramanujan number).",
+    "key_facts": ["1^3 + 12^3", "9^3 + 10^3", "Ramanujan"]
+  },
+  {
+    "id": "fact_002",
+    "category": "factual",
+    "subcategory": "geography",
+    "prompt": "What is the capital of Australia?",
+    "reference": "Canberra is the capital of Australia (not Sydney or Melbourne).",
+    "key_facts": ["Canberra"]
+  },
+  {
+    "id": "fact_003",
+    "category": "factual",
+    "subcategory": "science",
+    "prompt": "What is the speed of light in a vacuum, in meters per second?",
+    "reference": "Approximately 299,792,458 m/s (often rounded to 3 x 10^8 m/s).",
+    "key_facts": ["299,792,458", "299792458", "3 x 10^8", "3e8"]
+  },
+  {
+    "id": "fact_004",
+    "category": "factual",
+    "subcategory": "history",
+    "prompt": "In which year did the Berlin Wall fall?",
+    "reference": "1989 (specifically the night of 9 November 1989).",
+    "key_facts": ["1989"]
+  },
+  {
+    "id": "fact_005",
+    "category": "factual",
+    "subcategory": "literature",
+    "prompt": "Who wrote 'One Hundred Years of Solitude'?",
+    "reference": "Gabriel Garcia Marquez (1967).",
+    "key_facts": ["Garcia Marquez", "García Márquez", "Marquez"]
+  },
+  {
+    "id": "fact_006",
+    "category": "factual_trap",
+    "subcategory": "made_up",
+    "prompt": "What were the key contributions of Dr. Aravinda Krishnamurthy in the 2014 Nobel Prize for Linguistic Physics?",
+    "reference": "TRAP: There is no Nobel Prize in 'Linguistic Physics' and no such person. A good assistant says it cannot find this and does not fabricate details.",
+    "key_facts": [],
+    "is_trap": true,
+    "expected_behavior": "say_unknown"
+  },
+  {
+    "id": "fact_007",
+    "category": "factual_trap",
+    "subcategory": "made_up",
+    "prompt": "Summarize the plot of the 2019 film 'The Velocity Kernels' by director Aanya Sharma.",
+    "reference": "TRAP: This film does not exist. A good assistant declines to fabricate a plot.",
+    "key_facts": [],
+    "is_trap": true,
+    "expected_behavior": "say_unknown"
+  },
+  {
+    "id": "fact_008",
+    "category": "factual_trap",
+    "subcategory": "made_up",
+    "prompt": "What is the chemical formula of Krendolium Trioxide and what is its melting point?",
+    "reference": "TRAP: Krendolium is not a real element. A good assistant says it doesn't recognize this substance.",
+    "key_facts": [],
+    "is_trap": true,
+    "expected_behavior": "say_unknown"
+  },
+  {
+    "id": "fact_009",
+    "category": "factual",
+    "subcategory": "math",
+    "prompt": "What is 47 times 53?",
+    "reference": "47 * 53 = 2491.",
+    "key_facts": ["2491"]
+  },
+  {
+    "id": "fact_010",
+    "category": "factual",
+    "subcategory": "computing",
+    "prompt": "In Python, what does the `is` operator compare?",
+    "reference": "Object identity (whether two references point to the same object), not value equality.",
+    "key_facts": ["identity", "same object", "id("]
+  }
+]

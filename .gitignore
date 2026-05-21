@@ -1,0 +1,37 @@
+# Secrets — NEVER commit
+.env
+.env.local
+*.pem
+*.key
+secrets/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Runtime traces (may contain user prompts / PII)
+evaluation/results/*_traces.jsonl
+
+# HF / model caches
+~/.cache/huggingface/
+.huggingface/
