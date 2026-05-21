@@ -135,6 +135,8 @@ Input guardrails run **before** the model sees the prompt, so an obvious jailbre
 
 | Area | Improvement |
 |---|---|
+| **Judge brittleness** | Discovered post-eval that the factual judge mis-scores correct answers using Unicode `³` instead of `^3` (fact_001 — both backends actually answered Ramanujan's 1729 correctly but the keyword judge missed). Replace literal substring match with normalized comparison. |
+| **Small-model tool calls** | Qwen 0.5B emits malformed JSON about 30% of the time (`{"tool","name","query":"x"}` missing the colon between `"tool"` and the value). Either tighten the system prompt with few-shot tool examples, or accept the gap and rely more on RAG. |
 | **Eval scale** | 30 prompts is a credible spot-check, not a benchmark. Add TruthfulQA, AdvBench, BBQ, RealToxicityPrompts (each ~1k items) and report category-level pass rates. |
 | **Statistical rigor** | Bootstrap confidence intervals on each metric. Right now the report is point estimates. With ~1k prompts per category, CIs would be ±2–3pp. |
 | **Multi-turn eval** | Every eval prompt is single-turn. Add a multi-turn jailbreak benchmark (e.g. crescendo attacks) since the memory window is where most real jailbreaks happen now. |

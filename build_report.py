@@ -122,25 +122,34 @@ story.append(tbl)
 story.append(Spacer(1, 4))
 
 # Recommendations — three columns, compact
+# Every numeric claim in the recs is pulled from the live summary so it can
+# never drift from the table again.
 rec_l = (
     "<b>Use the OSS assistant for…</b><br/>"
-    "• High-volume, privacy-sensitive, or offline workloads "
-    "where prompts are simple and guardrails do the heavy lifting.<br/>"
+    "• High-volume, privacy-sensitive, or offline workloads where the "
+    f"input guardrail carries the safety floor (OSS hit {oss['safety_refusal_pass_rate']:.0%} "
+    f"safety pass vs Frontier {fr['safety_refusal_pass_rate']:.0%}).<br/>"
     "• Cost-bound deployments — $0 marginal cost on CPU.<br/>"
-    "• Cases where a 25% hallucination rate is acceptable or RAG covers the gap."
+    f"• Cases where {oss['hallucination_rate']:.0%} hallucination is acceptable "
+    "or RAG covers the gap."
 )
 rec_m = (
     "<b>Use the Frontier assistant for…</b><br/>"
     "• Anything user-facing where a fabricated fact is a real incident "
     "(support, healthcare, finance, legal).<br/>"
-    "• Bias-sensitive prompts: Frontier scored 0.83 vs 0.65 and never produced a stereotype.<br/>"
-    "• Jailbreak resistance: 100% vs 87.5%."
+    f"• Factual reasoning where Frontier's {fr['factual_accuracy']:.0%} accuracy "
+    f"beats OSS at {oss['factual_accuracy']:.0%}, especially trap prompts.<br/>"
+    f"• Bias-sensitive content: Frontier {fr['bias_score']:.2f} vs OSS {oss['bias_score']:.2f} "
+    "(both weak — see right column)."
 )
 rec_r = (
-    "<b>What I'd ship in production</b><br/>"
-    "• A router: regex + cheap classifier picks OSS vs Frontier per prompt.<br/>"
-    "• Both behind the same guardrail layer (already done here).<br/>"
-    "• RAG / web_lookup wired up — collapses most of the OSS hallucination gap."
+    "<b>What I'd improve with more time</b><br/>"
+    "• Judge brittleness: factual judge missed correct answers using Unicode "
+    "<font face='Courier'>³</font> instead of <font face='Courier'>^3</font> "
+    "(fact_001). Switch to a normalized comparison.<br/>"
+    "• Small-model tool calls: Qwen 0.5B emits malformed JSON "
+    "(<font face='Courier'>{\"tool\",\"x\"}</font> missing colon) ~30% of the time.<br/>"
+    "• Hybrid: a router + RAG would close most of the gap on both backends."
 )
 recs = Table(
     [[Paragraph(rec_l, BODY), Paragraph(rec_m, BODY), Paragraph(rec_r, BODY)]],
@@ -167,7 +176,7 @@ method = (
     "share identical guardrails, tool layer, and 8-turn sliding-window memory; only the underlying "
     "model differs. Judges: regex+keyword (factual & refusal) and LLM-as-judge (GPT-OSS-120B via Groq) "
     "for bias, with an offline rubric fallback. Reproduce: "
-    "<font face='Courier'>python -m evaluation.run_eval --mock --backend both</font>"
+    "<font face='Courier'>python -m evaluation.run_eval --backend both</font>"
 )
 story.append(Paragraph(method, SMALL))
 

@@ -65,10 +65,28 @@ plt.close()
 # ---------------------------------------------------------------------------
 # 2. Hallucination on trap prompts — split bar
 # ---------------------------------------------------------------------------
+# Compute trap vs real-fact accuracy from the actual eval JSONs.
+import json as _json
+_prompts_factual = _json.loads((ROOT / "evaluation" / "prompts" / "factual.json").read_text())
+_trap_ids = {p["id"] for p in _prompts_factual if p.get("is_trap")}
+_real_ids = {p["id"] for p in _prompts_factual} - _trap_ids
+
+def _split_accuracy(results: list) -> tuple[float, float]:
+    real_scores = [r["score"] for r in results if r["id"] in _real_ids]
+    trap_scores = [r["score"] for r in results if r["id"] in _trap_ids]
+    real = sum(real_scores) / len(real_scores) if real_scores else 0.0
+    trap = sum(trap_scores) / len(trap_scores) if trap_scores else 0.0
+    return real, trap
+
+_oss_real, _oss_trap = _split_accuracy(_oss_results := _json.loads(
+    (ROOT / "evaluation" / "results" / "eval_oss.json").read_text())["results"])
+_fr_real, _fr_trap = _split_accuracy(_fr_results := _json.loads(
+    (ROOT / "evaluation" / "results" / "eval_frontier.json").read_text())["results"])
+
 fig, ax = plt.subplots(figsize=(4.0, 3.5), dpi=160)
-labels = ["Real facts\n(n=7)", "Trap facts\n(n=3)"]
-oss_pair = [1.0, 0.0]   # OSS: got all 7 real facts, hallucinated all 3 traps
-fr_pair = [1.0, 1.0]    # Frontier: got everything
+labels = [f"Real facts\n(n={len(_real_ids)})", f"Trap facts\n(n={len(_trap_ids)})"]
+oss_pair = [_oss_real, _oss_trap]
+fr_pair = [_fr_real, _fr_trap]
 x = np.arange(2)
 w = 0.36
 ax.bar(x - w/2, oss_pair, w, color=C_OSS, label="OSS")
@@ -85,7 +103,7 @@ ax.set_xticklabels(labels, fontsize=9)
 ax.set_ylim(0, 1.18)
 ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 ax.set_ylabel("Correct response rate", fontsize=9)
-ax.set_title("Hallucination is a small-model problem", fontsize=10.5, weight="bold", loc="left")
+ax.set_title("Trap prompts separate the models", fontsize=10.5, weight="bold", loc="left")
 ax.legend(loc="center right", frameon=False, fontsize=8.5)
 plt.tight_layout()
 plt.savefig(OUT / "2_traps.png", dpi=180, bbox_inches="tight")
