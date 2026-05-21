@@ -31,10 +31,16 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # Configure your Frontier Key (the system auto-detects either):
-# Option A: Official direct DeepSeek V3 API (low latency, paid):
+# Option A: Official direct DeepSeek API (low latency, paid):
 export DEEPSEEK_API_KEY=sk-...
 # Option B: Free tier via OpenRouter ($0 free tier):
 export OPENROUTER_API_KEY=sk-or-v1-...
+
+# Multi-key rotation (optional): if one key hits its daily cap, the assistant
+# automatically rotates to the next. Use comma-separated values:
+# export OPENROUTER_API_KEYS=sk-or-v1-aaa,sk-or-v1-bbb,sk-or-v1-ccc
+# Note: OpenRouter's free 50/day cap is PER ACCOUNT — multiple keys from the
+# same account share one pool. Use keys from different accounts to multiply quota.
 
 # Run the chat UI
 streamlit run app/frontend/streamlit_app.py

@@ -155,33 +155,51 @@ class LLMJudge:
     model: str = os.environ.get("JUDGE_MODEL", "")
     _client: Any = None
 
+    def _collect_keys(self, primary: str) -> list[str]:
+        keys: list[str] = []
+        multi = os.environ.get(f"{primary}S")
+        if multi:
+            keys.extend(k.strip() for k in multi.split(",") if k.strip())
+        single = os.environ.get(primary)
+        if single and single not in keys:
+            keys.append(single)
+        return keys
+
     def _load(self) -> None:
         if self._client is not None:
             return
-        
-        deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
-        openrouter_key = os.environ.get("OPENROUTER_API_KEY")
-        
-        if not deepseek_key and not openrouter_key:
+
+        deepseek_keys = self._collect_keys("DEEPSEEK_API_KEY")
+        openrouter_keys = self._collect_keys("OPENROUTER_API_KEY")
+
+        if not deepseek_keys and not openrouter_keys:
             return
-            
+
         from openai import OpenAI
-        
-        if deepseek_key:
-            base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-            self._client = OpenAI(base_url=base_url, api_key=deepseek_key)
+
+        if deepseek_keys:
+            self._keys = deepseek_keys
+            self._base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
             self._resolved_model = self.model or "deepseek-chat"
+            self._headers = None
         else:
-            base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-            self._client = OpenAI(
-                base_url=base_url,
-                api_key=openrouter_key,
-                default_headers={
-                    "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://github.com/ai-assistants-eval"),
-                    "X-Title": os.environ.get("OPENROUTER_TITLE", "AI Assistants Eval Judge"),
-                },
-            )
+            self._keys = openrouter_keys
+            self._base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
             self._resolved_model = self.model or "deepseek/deepseek-v4-flash:free"
+            self._headers = {
+                "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://github.com/ai-assistants-eval"),
+                "X-Title": os.environ.get("OPENROUTER_TITLE", "AI Assistants Eval Judge"),
+            }
+        self._key_idx = 0
+        self._client = OpenAI(base_url=self._base_url, api_key=self._keys[0], default_headers=self._headers)
+
+    def _advance_key(self) -> bool:
+        if self._key_idx + 1 >= len(getattr(self, "_keys", [])):
+            return False
+        self._key_idx += 1
+        from openai import OpenAI
+        self._client = OpenAI(base_url=self._base_url, api_key=self._keys[self._key_idx], default_headers=self._headers)
+        return True
 
     def score(self, prompt_obj: dict[str, Any], reply: str) -> dict[str, Any]:
         self._load()
@@ -194,24 +212,30 @@ class LLMJudge:
             f"NOTES: {prompt_obj.get('notes', '')}\n\n"
             f"ASSISTANT REPLY:\n{reply}\n"
         )
-        try:
-            resp = self._client.chat.completions.create(
-                model=self._resolved_model,
-                messages=[
-                    {"role": "system", "content": LLM_JUDGE_RUBRIC},
-                    {"role": "user", "content": user_block},
-                ],
-                temperature=0,
-                max_tokens=200,
-            )
-            text = (resp.choices[0].message.content or "").strip()
-            import json as _json
-            m = re.search(r"\{.*\}", text, re.DOTALL)
-            if not m:
-                raise ValueError("no json")
-            return _json.loads(m.group(0))
-        except Exception as e:
-            return self._fallback(prompt_obj, reply, error=str(e))
+        # Try each key in turn on daily-cap errors; rely on fallback rubric otherwise.
+        for _attempt in range(max(1, len(getattr(self, "_keys", [])))):
+            try:
+                resp = self._client.chat.completions.create(
+                    model=self._resolved_model,
+                    messages=[
+                        {"role": "system", "content": LLM_JUDGE_RUBRIC},
+                        {"role": "user", "content": user_block},
+                    ],
+                    temperature=0,
+                    max_tokens=200,
+                )
+                text = (resp.choices[0].message.content or "").strip()
+                import json as _json
+                m = re.search(r"\{.*\}", text, re.DOTALL)
+                if not m:
+                    raise ValueError("no json")
+                return _json.loads(m.group(0))
+            except Exception as e:
+                msg = str(e)
+                if ("free-models-per-day" in msg or "per-day" in msg.lower()) and self._advance_key():
+                    continue  # try next key
+                return self._fallback(prompt_obj, reply, error=msg)
+        return self._fallback(prompt_obj, reply, error="all keys exhausted")
 
     def _fallback(self, prompt_obj: dict[str, Any], reply: str, *, error: str | None = None) -> dict[str, Any]:
         low = _normalize(reply)

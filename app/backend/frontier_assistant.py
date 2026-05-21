@@ -55,41 +55,62 @@ class FrontierAssistant:
     _client: Any = None
     history: list[Turn] = field(default_factory=list)
 
+    def _collect_keys(self, primary: str) -> list[str]:
+        """Read `<NAME>S` (comma-separated, multi-key) and `<NAME>` (legacy single).
+        Returns a de-duplicated, order-preserved list.
+        """
+        keys: list[str] = []
+        multi = os.environ.get(f"{primary}S")
+        if multi:
+            keys.extend(k.strip() for k in multi.split(",") if k.strip())
+        single = os.environ.get(primary)
+        if single and single not in keys:
+            keys.append(single)
+        return keys
+
+    def _build_client(self, key: str) -> Any:
+        from openai import OpenAI
+        return OpenAI(base_url=self._base_url, api_key=key, default_headers=self._headers)
+
+    def _advance_key(self) -> bool:
+        """Rotate to the next available key. Returns False if exhausted."""
+        if self._key_idx + 1 >= len(self._keys):
+            return False
+        self._key_idx += 1
+        self._client = self._build_client(self._keys[self._key_idx])
+        return True
+
     def _load(self) -> None:
         if self._client is not None:
             return
-        
-        deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
-        openrouter_key = os.environ.get("OPENROUTER_API_KEY")
-        
-        if not deepseek_key and not openrouter_key:
+
+        deepseek_keys = self._collect_keys("DEEPSEEK_API_KEY")
+        openrouter_keys = self._collect_keys("OPENROUTER_API_KEY")
+
+        if not deepseek_keys and not openrouter_keys:
             raise RuntimeError(
-                "Provide either DEEPSEEK_API_KEY or OPENROUTER_API_KEY to run the frontier assistant."
+                "Provide DEEPSEEK_API_KEY(S) or OPENROUTER_API_KEY(S) to run the frontier assistant."
             )
-        
-        from openai import OpenAI
-        
-        if deepseek_key:
-            # Direct official DeepSeek V3 API configuration
-            base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-            model = self.model_name or "deepseek-chat"
-            self._client = OpenAI(base_url=base_url, api_key=deepseek_key)
-            self._resolved_model = model
+
+        # Prefer DeepSeek direct (paid, no daily cap) over OpenRouter free.
+        if deepseek_keys:
+            self._keys = deepseek_keys
+            self._base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+            self._resolved_model = self.model_name or "deepseek-chat"
             self._backend_source = "DeepSeek API"
+            self._headers = None
         else:
-            # OpenRouter free tier configuration
-            base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-            model = self.model_name or "deepseek/deepseek-v4-flash:free"
-            self._client = OpenAI(
-                base_url=base_url,
-                api_key=openrouter_key,
-                default_headers={
-                    "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://github.com/ai-assistants-eval"),
-                    "X-Title": os.environ.get("OPENROUTER_TITLE", "AI Assistants Eval"),
-                },
-            )
-            self._resolved_model = model
+            self._keys = openrouter_keys
+            self._base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+            self._resolved_model = self.model_name or "deepseek/deepseek-v4-flash:free"
             self._backend_source = "OpenRouter"
+            self._headers = {
+                "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://github.com/ai-assistants-eval"),
+                "X-Title": os.environ.get("OPENROUTER_TITLE", "AI Assistants Eval"),
+            }
+
+        self._key_idx = 0
+        self._client = self._build_client(self._keys[0])
 
     def _messages(self, extra: list[Turn] | None = None) -> list[dict[str, Any]]:
         """Convert internal Turn history into OpenAI chat-completions format."""
@@ -106,41 +127,57 @@ class FrontierAssistant:
 
     def _generate(self, messages: list[dict[str, Any]]) -> tuple[str, int, str]:
         self._load()
-        # Up to 3 attempts with exponential backoff on transient errors.
         last_err: Exception | None = None
         current_model = self._resolved_model
-        
-        for attempt, delay in enumerate([0, 2, 4]):
-            if delay:
-                time.sleep(delay)
-            try:
-                resp = self._client.chat.completions.create(
-                    model=current_model,
-                    messages=messages,
-                    temperature=self.temperature,
-                    max_tokens=self.max_new_tokens,
-                )
-                text = (resp.choices[0].message.content or "").strip()
-                n_tok = int(getattr(resp.usage, "completion_tokens", 0) or 0)
-                return text, n_tok, current_model
-            except Exception as e:  # noqa: BLE001
-                last_err = e
-                msg = str(e)
-                # Only retry on rate limit / server errors.
-                if not ("429" in msg or "Rate" in msg or "rate" in msg or
-                        "503" in msg or "502" in msg or "Timeout" in msg or "timeout" in msg):
-                    break
-                
-                # If rate limited on OpenRouter, automatically fallback to openrouter/free router!
-                if ("429" in msg or "Rate" in msg or "rate" in msg) and self._backend_source == "OpenRouter" and current_model != "openrouter/free":
-                    current_model = "openrouter/free"
+
+        # Outer loop = key rotation. Inner loop = retry-with-backoff per key.
+        while True:
+            rotated = False
+            for delay in (0, 2, 4):
+                if delay:
+                    time.sleep(delay)
+                try:
+                    resp = self._client.chat.completions.create(
+                        model=current_model,
+                        messages=messages,
+                        temperature=self.temperature,
+                        max_tokens=self.max_new_tokens,
+                    )
+                    text = (resp.choices[0].message.content or "").strip()
+                    n_tok = int(getattr(resp.usage, "completion_tokens", 0) or 0)
+                    return text, n_tok, current_model
+                except Exception as e:  # noqa: BLE001
+                    last_err = e
+                    msg = str(e)
+                    is_transient = ("429" in msg or "rate" in msg.lower() or
+                                    "503" in msg or "502" in msg or "timeout" in msg.lower())
+                    if not is_transient:
+                        break  # non-transient: bail out
+
+                    # Per-account daily cap → rotate to next key if available.
+                    daily_cap_hit = ("free-models-per-day" in msg or "per-day" in msg.lower())
+                    if daily_cap_hit and self._backend_source == "OpenRouter" and self._advance_key():
+                        current_model = self._resolved_model  # reset to primary on new key
+                        rotated = True
+                        break  # restart retry loop on new key
+
+                    # Rate-limited on this key but no more keys → try OpenRouter's free router.
+                    if self._backend_source == "OpenRouter" and current_model != "openrouter/free":
+                        current_model = "openrouter/free"
+            if not rotated:
+                break  # retries exhausted on the current (and any rotated) key
 
         msg = str(last_err) if last_err else ""
-        if "429" in msg or "Rate" in msg or "rate" in msg or "Quota" in msg:
+        n_keys = len(self._keys)
+        if "free-models-per-day" in msg or "per-day" in msg.lower():
+            return (f"All {n_keys} {self._backend_source} key(s) hit the daily free-tier cap. "
+                    "Quota resets at midnight UTC. Switch to OSS, or add OpenRouter credit "
+                    "($10 unlocks 1,000 free reqs/day)."), 0, current_model
+        if "429" in msg or "rate" in msg.lower() or "Quota" in msg:
             return (f"I'm currently hitting a rate limit on the {self._backend_source} route. "
                     "Please wait about a minute and try again."), 0, current_model
         if "401" in msg or "403" in msg or "API key" in msg:
-            return f"The {self._backend_source} API key is missing or invalid. Check your environment keys and retry.", 0, current_model
+            return f"The {self._backend_source} API key is missing or invalid. Check your env keys and retry.", 0, current_model
         return "I'm not able to help with that right now (API error).", 0, current_model
 
     def chat(self, user_msg: str) -> dict[str, Any]:
