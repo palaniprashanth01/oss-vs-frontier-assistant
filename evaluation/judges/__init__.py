@@ -181,7 +181,7 @@ class LLMJudge:
                     "X-Title": os.environ.get("OPENROUTER_TITLE", "AI Assistants Eval Judge"),
                 },
             )
-            self._resolved_model = self.model or "deepseek/deepseek-chat-v3-0324:free"
+            self._resolved_model = self.model or "deepseek/deepseek-v4-flash:free"
 
     def score(self, prompt_obj: dict[str, Any], reply: str) -> dict[str, Any]:
         self._load()

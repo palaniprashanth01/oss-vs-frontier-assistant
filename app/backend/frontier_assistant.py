@@ -79,7 +79,7 @@ class FrontierAssistant:
         else:
             # OpenRouter free tier configuration
             base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-            model = self.model_name or "deepseek/deepseek-chat-v3-0324:free"
+            model = self.model_name or "deepseek/deepseek-v4-flash:free"
             self._client = OpenAI(
                 base_url=base_url,
                 api_key=openrouter_key,
