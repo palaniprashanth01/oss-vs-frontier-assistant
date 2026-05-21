@@ -170,17 +170,26 @@ class LLMJudge:
             return
 
         deepseek_keys = self._collect_keys("DEEPSEEK_API_KEY")
+        gemini_keys = self._collect_keys("GEMINI_API_KEY") or self._collect_keys("GOOGLE_API_KEY")
         openrouter_keys = self._collect_keys("OPENROUTER_API_KEY")
 
-        if not deepseek_keys and not openrouter_keys:
+        if not (deepseek_keys or gemini_keys or openrouter_keys):
             return
 
         from openai import OpenAI
 
+        # Priority: DeepSeek → Gemini → OpenRouter (matches FrontierAssistant).
         if deepseek_keys:
             self._keys = deepseek_keys
             self._base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
             self._resolved_model = self.model or "deepseek-chat"
+            self._headers = None
+        elif gemini_keys:
+            self._keys = gemini_keys
+            self._base_url = os.environ.get(
+                "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"
+            )
+            self._resolved_model = self.model or "gemini-2.0-flash"
             self._headers = None
         else:
             self._keys = openrouter_keys

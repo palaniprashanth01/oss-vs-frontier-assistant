@@ -42,7 +42,7 @@ st.caption("Same interface, same guardrails, same tools. Pick a backend and chat
 # --- sidebar ---------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
-    backend = st.radio("Backend", ["OSS (Qwen2.5-0.5B)", "Frontier (DeepSeek V3 / OpenRouter)"], index=0)
+    backend = st.radio("Backend", ["OSS (Qwen2.5-0.5B)", "Frontier (DeepSeek / Gemini / OpenRouter)"], index=0)
     temperature = st.slider("Temperature", 0.0, 1.0, 0.3, 0.05)
     if st.button("🗑️ Reset conversation"):
         st.session_state.pop("assistant", None)
@@ -65,8 +65,16 @@ with st.sidebar:
 def make_assistant():
     if backend.startswith("OSS"):
         return OSSAssistant(temperature=temperature)
-    if not os.environ.get("DEEPSEEK_API_KEY") and not os.environ.get("OPENROUTER_API_KEY"):
-        st.warning("Set DEEPSEEK_API_KEY (direct API) or OPENROUTER_API_KEY (free tier) to use the frontier backend.")
+    if not any(os.environ.get(k) for k in (
+        "DEEPSEEK_API_KEY", "DEEPSEEK_API_KEYS",
+        "GEMINI_API_KEY", "GEMINI_API_KEYS", "GOOGLE_API_KEY",
+        "OPENROUTER_API_KEY", "OPENROUTER_API_KEYS",
+    )):
+        st.warning(
+            "Set one of GEMINI_API_KEY (1,500 free/day, recommended), "
+            "DEEPSEEK_API_KEY (paid), or OPENROUTER_API_KEY (50 free/day) "
+            "to use the frontier backend."
+        )
         st.stop()
     return FrontierAssistant(temperature=temperature)
 

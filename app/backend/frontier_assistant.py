@@ -85,19 +85,30 @@ class FrontierAssistant:
             return
 
         deepseek_keys = self._collect_keys("DEEPSEEK_API_KEY")
+        gemini_keys = self._collect_keys("GEMINI_API_KEY") or self._collect_keys("GOOGLE_API_KEY")
         openrouter_keys = self._collect_keys("OPENROUTER_API_KEY")
 
-        if not deepseek_keys and not openrouter_keys:
+        if not (deepseek_keys or gemini_keys or openrouter_keys):
             raise RuntimeError(
-                "Provide DEEPSEEK_API_KEY(S) or OPENROUTER_API_KEY(S) to run the frontier assistant."
+                "Provide DEEPSEEK_API_KEY(S), GEMINI_API_KEY(S), or OPENROUTER_API_KEY(S) "
+                "to run the frontier assistant."
             )
 
-        # Prefer DeepSeek direct (paid, no daily cap) over OpenRouter free.
+        # Priority: DeepSeek (paid, no cap) → Gemini (free 1,500/day) → OpenRouter (free 50/day).
         if deepseek_keys:
             self._keys = deepseek_keys
             self._base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
             self._resolved_model = self.model_name or "deepseek-chat"
             self._backend_source = "DeepSeek API"
+            self._headers = None
+        elif gemini_keys:
+            self._keys = gemini_keys
+            # Google's OpenAI-compatible endpoint — same `openai` SDK, different base URL.
+            self._base_url = os.environ.get(
+                "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"
+            )
+            self._resolved_model = self.model_name or "gemini-2.0-flash"
+            self._backend_source = "Gemini"
             self._headers = None
         else:
             self._keys = openrouter_keys
