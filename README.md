@@ -33,14 +33,16 @@ pip install -r requirements.txt
 # Configure your Frontier Key — auto-detected in this priority order:
 # A. DeepSeek direct (paid, no daily cap, lowest latency):
 export DEEPSEEK_API_KEY=sk-...
-# B. Gemini AI Studio (1,500 free reqs/day, no card) — recommended for free demos:
+# B. Groq Cloud (free + cheap paid, ~500 t/s, GPT-OSS-120B) — RECOMMENDED:
+export GROQ_API_KEY=gsk_...        # https://console.groq.com/keys
+# C. Gemini AI Studio (1,500 free reqs/day, can be flaky on new accounts):
 export GEMINI_API_KEY=AIza...      # https://aistudio.google.com/apikey
-# C. OpenRouter free tier (50 free reqs/day per account):
+# D. OpenRouter free tier (50 free reqs/day per account):
 export OPENROUTER_API_KEY=sk-or-v1-...
 
 # Multi-key rotation (optional): if one key hits its daily cap, the assistant
 # automatically rotates to the next. Use comma-separated values:
-# export GEMINI_API_KEYS=key1,key2,key3
+# export GROQ_API_KEYS=key1,key2,key3
 # Note: free-tier caps are PER ACCOUNT. Multiple keys from one account share
 # the same pool. Use keys from different accounts to actually multiply quota.
 

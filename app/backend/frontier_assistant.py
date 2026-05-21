@@ -85,21 +85,33 @@ class FrontierAssistant:
             return
 
         deepseek_keys = self._collect_keys("DEEPSEEK_API_KEY")
+        groq_keys = self._collect_keys("GROQ_API_KEY")
         gemini_keys = self._collect_keys("GEMINI_API_KEY") or self._collect_keys("GOOGLE_API_KEY")
         openrouter_keys = self._collect_keys("OPENROUTER_API_KEY")
 
-        if not (deepseek_keys or gemini_keys or openrouter_keys):
+        if not (deepseek_keys or groq_keys or gemini_keys or openrouter_keys):
             raise RuntimeError(
-                "Provide DEEPSEEK_API_KEY(S), GEMINI_API_KEY(S), or OPENROUTER_API_KEY(S) "
-                "to run the frontier assistant."
+                "Provide DEEPSEEK_API_KEY(S), GROQ_API_KEY(S), GEMINI_API_KEY(S), "
+                "or OPENROUTER_API_KEY(S) to run the frontier assistant."
             )
 
-        # Priority: DeepSeek (paid, no cap) → Gemini (free 1,500/day) → OpenRouter (free 50/day).
+        # Priority: DeepSeek (paid, lowest latency) → Groq (free, reliable, 1K RPM,
+        # frontier-scale GPT-OSS-120B) → Gemini (free 1,500/day, flaky quotas) →
+        # OpenRouter (free 50/day per account).
         if deepseek_keys:
             self._keys = deepseek_keys
             self._base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
             self._resolved_model = self.model_name or "deepseek-chat"
             self._backend_source = "DeepSeek API"
+            self._headers = None
+        elif groq_keys:
+            self._keys = groq_keys
+            # Groq is OpenAI-compatible — same `openai` SDK, just a different base URL.
+            self._base_url = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+            # GPT-OSS-120B is OpenAI's flagship open-weight model (Nov 2024 release),
+            # served at ~500 t/s on Groq hardware. Production-tier on Groq.
+            self._resolved_model = self.model_name or "openai/gpt-oss-120b"
+            self._backend_source = "Groq"
             self._headers = None
         elif gemini_keys:
             self._keys = gemini_keys
