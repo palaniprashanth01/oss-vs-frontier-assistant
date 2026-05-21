@@ -12,6 +12,10 @@ sentencepiece
 matplotlib>=3.7
 numpy>=1.24
 
+# Report generation (build_charts.py + build_report.py)
+reportlab>=4.0
+pypdf>=4.0
+
 # Dev (optional)
 # pytest
 # black

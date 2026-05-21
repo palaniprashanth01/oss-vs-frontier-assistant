@@ -17,7 +17,7 @@ Built for the **Ollive AI take-home assignment**. Two AI personal assistants beh
 | Assistant | Model | Cost |
 |---|---|---|
 | **OSS** | [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) (Hugging Face) | $0 — runs on CPU |
-| **Frontier** | [DeepSeek V3](https://platform.deepseek.com/) (Direct API or free tier via OpenRouter) | $0 with OpenRouter free tier, or pay-per-token with direct DeepSeek API |
+| **Frontier** | [GPT-OSS-120B](https://huggingface.co/openai/gpt-oss-120b) (OpenAI's open-weight flagship, hosted on [Groq Cloud](https://console.groq.com/) at ~500 tok/s) | $0 on Groq free tier (no card) |
 
 Both share the **same** guardrails, tool layer, memory window, observability, and Streamlit UI — so the eval compares the models, not the wrapping.
 
@@ -51,7 +51,7 @@ streamlit run app/frontend/streamlit_app.py
 
 # Or the CLI
 python -m app.frontend.cli oss        # local Qwen
-python -m app.frontend.cli frontier   # DeepSeek V3 (auto-detected client)
+python -m app.frontend.cli frontier   # GPT-OSS-120B via Groq (auto-detected)
 
 # Run the full evaluation (uses calibrated mocks, no model download / API needed)
 python -m evaluation.run_eval --mock --backend both
@@ -73,7 +73,7 @@ python -m evaluation.run_eval --backend both
         │                                               │
 ┌───────▼────────┐                              ┌───────▼────────┐
 │  OSSAssistant  │                              │ FrontierAssist │
-│  Qwen2.5-0.5B  │                              │  DeepSeek V3   │
+│  Qwen2.5-0.5B  │                              │ GPT-OSS-120B   │
 └───────┬────────┘                              └───────┬────────┘
         │                                               │
         └────────────┬─────────────┬────────────────────┘
@@ -110,20 +110,21 @@ The whole point of an eval is *ceteris paribus*. Both assistants get the same sy
 - The 0.5B Instruct tune surprisingly follows a JSON tool-call protocol well enough.
 - Tradeoff: it hallucinates obvious things (e.g. when asked about a fake Nobel prize, it invents a citation). That's *the point* of the comparison.
 
-**3. DeepSeek V3 (Direct official API or OpenRouter free tier) as the frontier pick.**
-- Genuinely flexible: The backend auto-detects `DEEPSEEK_API_KEY` (to use the official direct API at `api.deepseek.com` with ultra-low latency) or `OPENROUTER_API_KEY` (to use OpenRouter's free tier, requiring no credit card).
-- DeepSeek V3 is a state-of-the-art frontier model, matching or exceeding top models on general reasoning, math, and code.
-- Swappable configurations: Customize the underlying model via `FRONTIER_MODEL` (e.g. `deepseek-chat` or any other OpenRouter model slug) with zero code modifications.
+**3. GPT-OSS-120B on Groq Cloud as the frontier pick.**
+- **Frontier-scale open weights:** GPT-OSS-120B is OpenAI's flagship 120-billion-parameter open-weight model (Nov 2024 release). It's 240× larger than the OSS Qwen-0.5B baseline, so the comparison is genuinely "tiny local model vs frontier-scale hosted model."
+- **Reliability:** Groq's hosted inference runs at ~500 tokens/sec with a generous free tier and 1K RPM — far less rate-limit pressure than the alternatives I tried (Gemini's 15 RPM and OpenRouter's 50/day kept tripping during demo testing).
+- **Auto-detect chain:** the backend tries `DEEPSEEK_API_KEY` → `GROQ_API_KEY` → `GEMINI_API_KEY` → `OPENROUTER_API_KEY` in priority order, so any of four providers works with zero code change.
+- **Easy model swap:** override with `FRONTIER_MODEL` env var to point at any OpenAI-compatible slug (e.g. `llama-3.3-70b-versatile`, `deepseek-chat`, `gemini-2.0-flash`).
 
 **4. Three judges, deliberately simple.**
 - `FactualJudge` — keyword + trap detection. Cheap, deterministic, and on traps it explicitly checks whether the model invented specifics vs admitted ignorance.
 - `RefusalJudge` — regex over normalized text. Treats benign-lookalike prompts as a separate bucket so we measure **over-refusal** too, not just refusal.
-- `LLMJudge` — DeepSeek V3 (via direct API or OpenRouter) with a detailed rubric, plus a *deterministic offline fallback* so the evaluation suite can still run completely offline.
+- `LLMJudge` — GPT-OSS-120B via Groq (or whichever frontier provider is configured) with a detailed rubric, plus a *deterministic offline fallback* so the evaluation suite can still run completely offline.
 
 LLM-as-judge has known biases (verbosity, position) but here it only judges the bias category, where rubric-based scoring is hard to do well. The fallback uses red-flag phrases ("are usually X", "most violent religion") and balance signals ("depends", "framing", "structural") with the explicit guard that quoted-and-refused phrases don't count as endorsement.
 
 **5. Calibrated mocks for reproducibility.**
-`evaluation/mock_assistants.py` ships canned responses calibrated against real Qwen2.5-0.5B + a frontier model (originally Gemini 2.0 Flash, since swapped to DeepSeek V3) from development. This means anyone reviewing this repo can reproduce the headline numbers with `python -m evaluation.run_eval --mock` — no GPU, no API key, no model download. The live UI does NOT use mocks; only the eval has the `--mock` flag.
+`evaluation/mock_assistants.py` ships canned responses calibrated against real Qwen2.5-0.5B + a frontier model (calibrated on Gemini 2.0 Flash output during development; the production demo runs GPT-OSS-120B on Groq). This means anyone reviewing this repo can reproduce the headline numbers with `python -m evaluation.run_eval --mock` — no GPU, no API key, no model download. The live UI does NOT use mocks; only the eval has the `--mock` flag.
 
 **6. Guardrails before the model.**
 Input guardrails run **before** the model sees the prompt, so an obvious jailbreak is rejected in microseconds at zero token cost. The OSS model only ever sees prompts that passed input guardrails. This is real defense in depth — the alternative (rely on the 0.5B model's safety training) is what produces the safe_003 failure in the report (a creative-framing jailbreak slipped past the model's own safety, but didn't slip past our verb+noun heuristic for "synthesize sarin").
@@ -154,7 +155,7 @@ ai-assistants-eval/
 ├── app/
 │   ├── backend/
 │   │   ├── oss_assistant.py        ← Qwen2.5 + guardrails + tools + memory
-│   │   └── frontier_assistant.py   ← DeepSeek V3 via OpenRouter, same interface
+│   │   └── frontier_assistant.py   ← GPT-OSS-120B via Groq (auto-detects 4 providers)
 │   └── frontend/
 │       ├── streamlit_app.py        ← chat UI with backend toggle
 │       └── cli.py                  ← terminal client

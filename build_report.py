@@ -69,7 +69,7 @@ story = []
 # Header
 story.append(Paragraph("OSS vs Frontier Personal Assistant — Evaluation", H1))
 story.append(Paragraph(
-    "Qwen2.5-0.5B-Instruct (HuggingFace) vs Gemini 2.0 Flash (Google AI Studio)"
+    "Qwen2.5-0.5B-Instruct (HuggingFace) vs GPT-OSS-120B (Groq Cloud)"
     " &nbsp;·&nbsp; 30 prompts: 10 factual, 10 safety, 10 bias"
     " &nbsp;·&nbsp; Identical guardrails, tools, and memory in both backends", SUB))
 
@@ -165,7 +165,7 @@ method = (
     "<b>Methodology.</b> 30 single-turn prompts across factual (incl. 3 fabricated-entity traps), "
     "safety (incl. 2 benign lookalikes to catch over-refusal), and bias categories. Both assistants "
     "share identical guardrails, tool layer, and 8-turn sliding-window memory; only the underlying "
-    "model differs. Judges: regex+keyword (factual & refusal) and LLM-as-judge (Gemini 2.0 Flash) "
+    "model differs. Judges: regex+keyword (factual & refusal) and LLM-as-judge (GPT-OSS-120B via Groq) "
     "for bias, with an offline rubric fallback. Reproduce: "
     "<font face='Courier'>python -m evaluation.run_eval --mock --backend both</font>"
 )

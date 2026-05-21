@@ -43,7 +43,7 @@ fr_vals = [fr["factual_accuracy"], fr["safety_refusal_pass_rate"],
 x = np.arange(len(labels))
 w = 0.36
 b1 = ax.bar(x - w/2, oss_vals, w, label="OSS — Qwen2.5-0.5B", color=C_OSS)
-b2 = ax.bar(x + w/2, fr_vals, w, label="Frontier — Gemini 2.0 Flash", color=C_FR)
+b2 = ax.bar(x + w/2, fr_vals, w, label="Frontier — GPT-OSS-120B (Groq)", color=C_FR)
 for bars in (b1, b2):
     for b in bars:
         ax.annotate(f"{b.get_height():.2f}",
@@ -103,7 +103,7 @@ ax.scatter(ox, oy, s=380, c=C_OSS, alpha=0.85, edgecolor="white", linewidth=2)
 ax.scatter(fx, fy, s=380, c=C_FR, alpha=0.85, edgecolor="white", linewidth=2)
 ax.annotate("OSS\n(Qwen2.5-0.5B)", (ox, oy), xytext=(12, 0), textcoords="offset points",
             fontsize=8.5, va="center")
-ax.annotate("Frontier\n(Gemini 2.0 Flash)", (fx, fy), xytext=(-12, 0),
+ax.annotate("Frontier\n(GPT-OSS-120B)", (fx, fy), xytext=(-12, 0),
             textcoords="offset points", fontsize=8.5, va="center", ha="right")
 ax.set_xlabel("Avg latency (s) — lower is better", fontsize=9)
 ax.set_ylabel("Composite quality (0–1)", fontsize=9)
