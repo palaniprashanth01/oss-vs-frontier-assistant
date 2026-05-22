@@ -84,53 +84,17 @@ class FrontierAssistant:
         if self._client is not None:
             return
 
-        deepseek_keys = self._collect_keys("DEEPSEEK_API_KEY")
         groq_keys = self._collect_keys("GROQ_API_KEY")
-        gemini_keys = self._collect_keys("GEMINI_API_KEY") or self._collect_keys("GOOGLE_API_KEY")
-        openrouter_keys = self._collect_keys("OPENROUTER_API_KEY")
-
-        if not (deepseek_keys or groq_keys or gemini_keys or openrouter_keys):
+        if not groq_keys:
             raise RuntimeError(
-                "Provide DEEPSEEK_API_KEY(S), GROQ_API_KEY(S), GEMINI_API_KEY(S), "
-                "or OPENROUTER_API_KEY(S) to run the frontier assistant."
+                "Provide GROQ_API_KEY to run the frontier assistant."
             )
 
-        # Priority: DeepSeek (paid, lowest latency) → Groq (free, reliable, 1K RPM,
-        # frontier-scale GPT-OSS-120B) → Gemini (free 1,500/day, flaky quotas) →
-        # OpenRouter (free 50/day per account).
-        if deepseek_keys:
-            self._keys = deepseek_keys
-            self._base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-            self._resolved_model = self.model_name or "deepseek-chat"
-            self._backend_source = "DeepSeek API"
-            self._headers = None
-        elif groq_keys:
-            self._keys = groq_keys
-            # Groq is OpenAI-compatible — same `openai` SDK, just a different base URL.
-            self._base_url = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-            # GPT-OSS-120B is OpenAI's flagship open-weight model (Nov 2024 release),
-            # served at ~500 t/s on Groq hardware. Production-tier on Groq.
-            self._resolved_model = self.model_name or "openai/gpt-oss-120b"
-            self._backend_source = "Groq"
-            self._headers = None
-        elif gemini_keys:
-            self._keys = gemini_keys
-            # Google's OpenAI-compatible endpoint — same `openai` SDK, different base URL.
-            self._base_url = os.environ.get(
-                "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"
-            )
-            self._resolved_model = self.model_name or "gemini-2.0-flash"
-            self._backend_source = "Gemini"
-            self._headers = None
-        else:
-            self._keys = openrouter_keys
-            self._base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-            self._resolved_model = self.model_name or "deepseek/deepseek-v4-flash:free"
-            self._backend_source = "OpenRouter"
-            self._headers = {
-                "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://github.com/ai-assistants-eval"),
-                "X-Title": os.environ.get("OPENROUTER_TITLE", "AI Assistants Eval"),
-            }
+        self._keys = groq_keys
+        self._base_url = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+        self._resolved_model = self.model_name or "openai/gpt-oss-120b"
+        self._backend_source = "Groq"
+        self._headers = None
 
         self._key_idx = 0
         self._client = self._build_client(self._keys[0])
@@ -201,7 +165,7 @@ class FrontierAssistant:
                     "Please wait about a minute and try again."), 0, current_model
         if "401" in msg or "403" in msg or "API key" in msg:
             return f"The {self._backend_source} API key is missing or invalid. Check your env keys and retry.", 0, current_model
-        return "I'm not able to help with that right now (API error).", 0, current_model
+        return f"I'm not able to help with that right now (API error: {msg}).", 0, current_model
 
     def chat(self, user_msg: str) -> dict[str, Any]:
         t0 = time.time()

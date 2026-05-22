@@ -65,13 +65,7 @@ with st.sidebar:
 def make_assistant():
     if backend.startswith("OSS"):
         return OSSAssistant(temperature=temperature)
-    if not any(os.environ.get(k) for k in (
-        "GROQ_API_KEY", "GROQ_API_KEYS",
-        # Other providers still auto-detected if set (see deploy/.env.example):
-        "DEEPSEEK_API_KEY", "DEEPSEEK_API_KEYS",
-        "GEMINI_API_KEY", "GEMINI_API_KEYS", "GOOGLE_API_KEY",
-        "OPENROUTER_API_KEY", "OPENROUTER_API_KEYS",
-    )):
+    if not any(os.environ.get(k) for k in ("GROQ_API_KEY", "GROQ_API_KEYS")):
         st.warning(
             "Set GROQ_API_KEY to use the frontier backend. "
             "Get a free key (no credit card) at https://console.groq.com/keys"
