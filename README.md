@@ -30,21 +30,16 @@ git clone <this-repo> && cd ai-assistants-eval
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Configure your Frontier Key — auto-detected in this priority order:
-# A. DeepSeek direct (paid, no daily cap, lowest latency):
-export DEEPSEEK_API_KEY=sk-...
-# B. Groq Cloud (free + cheap paid, ~500 t/s, GPT-OSS-120B) — RECOMMENDED:
-export GROQ_API_KEY=gsk_...        # https://console.groq.com/keys
-# C. Gemini AI Studio (1,500 free reqs/day, can be flaky on new accounts):
-export GEMINI_API_KEY=AIza...      # https://aistudio.google.com/apikey
-# D. OpenRouter free tier (50 free reqs/day per account):
-export OPENROUTER_API_KEY=sk-or-v1-...
+# Configure the Frontier key — Groq + GPT-OSS-120B (free tier, ~500 tok/s):
+export GROQ_API_KEY=gsk_...        # get one at https://console.groq.com/keys
 
-# Multi-key rotation (optional): if one key hits its daily cap, the assistant
-# automatically rotates to the next. Use comma-separated values:
-# export GROQ_API_KEYS=key1,key2,key3
-# Note: free-tier caps are PER ACCOUNT. Multiple keys from one account share
-# the same pool. Use keys from different accounts to actually multiply quota.
+# Optional: multi-key rotation if you hit Groq's free-tier cap. Auto-rotates
+# to the next key on daily-cap errors. Use keys from different Groq accounts
+# to actually multiply quota (per-account, not per-key):
+# export GROQ_API_KEYS=gsk_aaa,gsk_bbb,gsk_ccc
+
+# Other providers are also auto-detected (DeepSeek direct, Gemini, OpenRouter)
+# — see deploy/.env.example for the full priority chain and env var names.
 
 # Run the chat UI
 streamlit run app/frontend/streamlit_app.py
