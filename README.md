@@ -38,9 +38,6 @@ export GROQ_API_KEY=gsk_...        # get one at https://console.groq.com/keys
 # to actually multiply quota (per-account, not per-key):
 # export GROQ_API_KEYS=gsk_aaa,gsk_bbb,gsk_ccc
 
-# Other providers are also auto-detected (DeepSeek direct, Gemini, OpenRouter)
-# — see deploy/.env.example for the full priority chain and env var names.
-
 # Run the chat UI
 streamlit run app/frontend/streamlit_app.py
 
@@ -107,9 +104,8 @@ The whole point of an eval is *ceteris paribus*. Both assistants get the same sy
 
 **3. GPT-OSS-120B on Groq Cloud as the frontier pick.**
 - **Frontier-scale open weights:** GPT-OSS-120B is OpenAI's flagship 120-billion-parameter open-weight model (Nov 2024 release). It's 240× larger than the OSS Qwen-0.5B baseline, so the comparison is genuinely "tiny local model vs frontier-scale hosted model."
-- **Reliability:** Groq's hosted inference runs at ~500 tokens/sec with a generous free tier and 1K RPM — far less rate-limit pressure than the alternatives I tried (Gemini's 15 RPM and OpenRouter's 50/day kept tripping during demo testing).
-- **Auto-detect chain:** the backend tries `DEEPSEEK_API_KEY` → `GROQ_API_KEY` → `GEMINI_API_KEY` → `OPENROUTER_API_KEY` in priority order, so any of four providers works with zero code change.
-- **Easy model swap:** override with `FRONTIER_MODEL` env var to point at any OpenAI-compatible slug (e.g. `llama-3.3-70b-versatile`, `deepseek-chat`, `gemini-2.0-flash`).
+- **Reliability:** Groq's hosted inference runs at ~500 tokens/sec with a generous free tier and 1K RPM — far less rate-limit pressure than the alternatives I tried during development (Gemini's 15 RPM and OpenRouter's 50 reqs/day both tripped during demo testing).
+- **Easy model swap:** override with `FRONTIER_MODEL` env var to point at any OpenAI-compatible slug (e.g. `llama-3.3-70b-versatile`). The backend also auto-detects `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY` if you'd rather use one of those — see `deploy/.env.example`.
 
 **4. Three judges, deliberately simple.**
 - `FactualJudge` — keyword + trap detection. Cheap, deterministic, and on traps it explicitly checks whether the model invented specifics vs admitted ignorance.
@@ -152,7 +148,7 @@ ai-assistants-eval/
 ├── app/
 │   ├── backend/
 │   │   ├── oss_assistant.py        ← Qwen2.5 + guardrails + tools + memory
-│   │   └── frontier_assistant.py   ← GPT-OSS-120B via Groq (auto-detects 4 providers)
+│   │   └── frontier_assistant.py   ← GPT-OSS-120B via Groq, same interface as OSS
 │   └── frontend/
 │       ├── streamlit_app.py        ← chat UI with backend toggle
 │       └── cli.py                  ← terminal client

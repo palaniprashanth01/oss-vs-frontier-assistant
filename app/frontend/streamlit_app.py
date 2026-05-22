@@ -42,7 +42,7 @@ st.caption("Same interface, same guardrails, same tools. Pick a backend and chat
 # --- sidebar ---------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
-    backend = st.radio("Backend", ["OSS (Qwen2.5-0.5B)", "Frontier (DeepSeek / Groq / Gemini / OpenRouter)"], index=0)
+    backend = st.radio("Backend", ["OSS (Qwen2.5-0.5B)", "Frontier (GPT-OSS-120B · Groq)"], index=0)
     temperature = st.slider("Temperature", 0.0, 1.0, 0.3, 0.05)
     if st.button("🗑️ Reset conversation"):
         st.session_state.pop("assistant", None)
@@ -66,15 +66,15 @@ def make_assistant():
     if backend.startswith("OSS"):
         return OSSAssistant(temperature=temperature)
     if not any(os.environ.get(k) for k in (
-        "DEEPSEEK_API_KEY", "DEEPSEEK_API_KEYS",
         "GROQ_API_KEY", "GROQ_API_KEYS",
+        # Other providers still auto-detected if set (see deploy/.env.example):
+        "DEEPSEEK_API_KEY", "DEEPSEEK_API_KEYS",
         "GEMINI_API_KEY", "GEMINI_API_KEYS", "GOOGLE_API_KEY",
         "OPENROUTER_API_KEY", "OPENROUTER_API_KEYS",
     )):
         st.warning(
-            "Set one of GROQ_API_KEY (recommended — fast, free, GPT-OSS-120B), "
-            "GEMINI_API_KEY, DEEPSEEK_API_KEY, or OPENROUTER_API_KEY "
-            "to use the frontier backend."
+            "Set GROQ_API_KEY to use the frontier backend. "
+            "Get a free key (no credit card) at https://console.groq.com/keys"
         )
         st.stop()
     return FrontierAssistant(temperature=temperature)

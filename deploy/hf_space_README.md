@@ -45,12 +45,15 @@ pinned: false
 
 ## 4. Secrets
 
-In **Space Settings → Variables and secrets**, add either of the following keys (the backend auto-detects):
+In **Space Settings → Variables and secrets**, add this one key:
 
 | Key | Value | Notes |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | (from https://platform.deepseek.com/) | Direct official DeepSeek V3 API (Recommended) |
-| `OPENROUTER_API_KEY` | (from https://openrouter.ai/keys) | Free tier DeepSeek V3 (Alternative, $0 cost) |
+| `GROQ_API_KEY` | (from https://console.groq.com/keys) | Free tier, no card. Powers Frontier (GPT-OSS-120B). |
+
+> Optional: the backend also auto-detects `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`,
+> or `OPENROUTER_API_KEY` if you'd rather use a different provider — see
+> `deploy/.env.example` for the full priority chain.
 
 The OSS backend needs no secret — Qwen2.5-0.5B downloads on first run.
 
